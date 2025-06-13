@@ -1,0 +1,17 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Подключаем SignalR
+builder.Services.AddSignalR();
+
+var app = builder.Build();
+
+// Подключаем endpoint
+app.MapHub<ChatHub>("/chat");
+
+app.Run();

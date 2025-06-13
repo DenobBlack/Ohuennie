@@ -1,0 +1,33 @@
+using Microsoft.AspNetCore.SignalR.Client;
+
+var connection = new HubConnectionBuilder()
+    .WithUrl("http://localhost:5000/chat") // укажи свой URL, если другой порт
+    .Build();
+
+// Обработка сообщений
+connection.On<string, string>("ReceiveMessage", (user, message) =>
+{
+    Console.WriteLine($"{user}: {message}");
+});
+
+await connection.StartAsync();
+
+Console.Write("Введите ваше имя: ");
+var userName = Console.ReadLine();
+
+Console.Write("Введите имя комнаты: ");
+var roomName = Console.ReadLine();
+
+// Присоединение к комнате
+await connection.InvokeAsync("JoinRoom", roomName, userName);
+
+Console.WriteLine("Введите сообщения. Для выхода — Ctrl+C");
+
+while (true)
+{
+    var message = Console.ReadLine();
+    if (!string.IsNullOrWhiteSpace(message))
+    {
+        await connection.InvokeAsync("SendMessage", message);
+    }
+}
