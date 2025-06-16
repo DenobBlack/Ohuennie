@@ -1,0 +1,131 @@
+using Terminal.Gui;
+
+class Program
+{
+    static UserManager manager = new();
+
+    static void Main()
+    {
+        Application.Init();
+        var top = Application.Top;
+
+        var win = new Window("Панель администратора")
+        {
+            X = 0,
+            Y = 1,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        top.Add(win);
+
+        var loginLabel = new Label("Логин:") { X = 1, Y = 1 };
+        var loginField = new TextField("") { X = 20, Y = 1, Width = 40 };
+
+        var passwordLabel = new Label("Пароль:") { X = 1, Y = 3 };
+        var passwordField = new TextField("") { X = 20, Y = 3, Width = 40, Secret = true };
+
+        var adminPassLabel = new Label("Пароль администратора:") { X = 1, Y = 5 };
+        var adminPassField = new TextField("") { X = 25, Y = 5, Width = 35, Secret = true };
+
+        var addButton = new Button("Добавить") { X = 1, Y = 7 };
+        var deleteButton = new Button("Удалить") { X = 12, Y = 7 };
+        var changePassButton = new Button("Изменить пароль") { X = 30, Y = 7 };
+
+        var userList = new ListView(manager.Users.Select(u => u.Login).ToList())
+        {
+            X = 1,
+            Y = 9,
+            Width = Dim.Fill() - 2,
+            Height = Dim.Fill() - 4
+        };
+
+        addButton.Clicked += () =>
+        {
+            if (string.IsNullOrWhiteSpace(loginField.Text.ToString()) ||
+                string.IsNullOrWhiteSpace(passwordField.Text.ToString()))
+            {
+                MessageBox.ErrorQuery("Ошибка", "Логин и пароль не должны быть пустыми", "OK");
+                return;
+            }
+
+            if (!manager.AddUser(loginField.Text.ToString(), passwordField.Text.ToString()))
+            {
+                MessageBox.ErrorQuery("Ошибка", "Пользователь с таким логином уже существует", "OK");
+            }
+            else
+            {
+                UpdateUserList(userList);
+                loginField.Text = "";
+                passwordField.Text = "";
+            }
+        };
+
+        deleteButton.Clicked += () =>
+        {
+            var selected = userList.SelectedItem;
+            if (selected >= 0 && selected < manager.Users.Count)
+            {
+                if (!CheckAdminPassword(adminPassField.Text.ToString()))
+                {
+                    MessageBox.ErrorQuery("Ошибка", "Неверный пароль администратора", "OK");
+                    return;
+                }
+
+                var loginToDelete = manager.Users[selected].Login;
+                manager.RemoveUser(loginToDelete);
+                UpdateUserList(userList);
+            }
+        };
+
+        changePassButton.Clicked += () =>
+        {
+            var selected = userList.SelectedItem;
+            if (selected >= 0 && selected < manager.Users.Count)
+            {
+                if (!CheckAdminPassword(adminPassField.Text.ToString()))
+                {
+                    MessageBox.ErrorQuery("Ошибка", "Неверный пароль администратора", "OK");
+                    return;
+                }
+
+                var dialog = new Dialog("Изменить пароль", 60, 7);
+                var newPassLabel = new Label("Новый пароль:") { X = 1, Y = 1 };
+                var newPassField = new TextField("") { X = 18, Y = 1, Width = 40, Secret = true };
+                var ok = new Button("OK") { X = 18, Y = 3 };
+                ok.Clicked += () =>
+                {
+                    manager.ChangePassword(manager.Users[selected].Login, newPassField.Text.ToString());
+                    Application.RequestStop();
+                };
+                dialog.Add(newPassLabel, newPassField, ok);
+                Application.Run(dialog);
+            }
+        };
+
+        var helpLabel = new Label("Подсказка: выберите пользователя для удаления/изменения. Пароль администратора: admin")
+        {
+            X = 1,
+            Y = Pos.AnchorEnd(2),
+            Width = Dim.Fill(),
+            ColorScheme = Colors.Dialog
+        };
+
+        win.Add(loginLabel, loginField,
+                passwordLabel, passwordField,
+                adminPassLabel, adminPassField,
+                addButton, deleteButton, changePassButton,
+                userList, helpLabel);
+
+        Application.Run();
+    }
+
+    static void UpdateUserList(ListView listView)
+    {
+        listView.SetSource(manager.Users.Select(u => u.Login).ToList());
+    }
+
+    static bool CheckAdminPassword(string inputPassword)
+    {
+        return inputPassword == "admin";
+    }
+}
