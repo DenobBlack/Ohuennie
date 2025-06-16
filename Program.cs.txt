@@ -1,0 +1,78 @@
+using Terminal.Gui;
+
+class Program
+{
+    static UserManager manager = new();
+
+    static void Main()
+    {
+        Application.Init();
+        var top = Application.Top;
+
+        var win = new Window("Панель администратора")
+        {
+            X = 0,
+            Y = 1,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        top.Add(win);
+
+        var loginLabel = new Label("Логин:") { X = 1, Y = 1 };
+        var loginField = new TextField("") { X = 20, Y = 1, Width = 40 };
+
+        var passwordLabel = new Label("Пароль:") { X = 1, Y = 3 };
+        var passwordField = new TextField("") { X = 20, Y = 3, Width = 40, Secret = true };
+
+        var addButton = new Button("Добавить") { X = 1, Y = 5 };
+        var deleteButton = new Button("Удалить") { X = 12, Y = 5 };
+
+        var userList = new ListView(manager.Users.Select(u => u.Login).ToList())
+        {
+            X = 1,
+            Y = 7,
+            Width = Dim.Fill() - 2,
+            Height = Dim.Fill() - 2
+        };
+
+        addButton.Clicked += () =>
+        {
+            if (string.IsNullOrWhiteSpace(loginField.Text.ToString()) ||
+                string.IsNullOrWhiteSpace(passwordField.Text.ToString()))
+            {
+                MessageBox.ErrorQuery("Ошибка", "Логин и пароль не должны быть пустыми", "OK");
+                return;
+            }
+
+            if (!manager.AddUser(loginField.Text.ToString(), passwordField.Text.ToString()))
+            {
+                MessageBox.ErrorQuery("Ошибка", "Пользователь с таким логином уже существует", "OK");
+            }
+            else
+            {
+                UpdateUserList(userList);
+                loginField.Text = "";
+                passwordField.Text = "";
+            }
+        };
+
+        deleteButton.Clicked += () =>
+        {
+            var selected = userList.SelectedItem;
+            if (selected >= 0 && selected < manager.Users.Count)
+            {
+                var loginToDelete = manager.Users[selected].Login;
+                manager.RemoveUser(loginToDelete);
+                UpdateUserList(userList);
+            }
+        };
+
+        win.Add(loginLabel, loginField, passwordLabel, passwordField, addButton, deleteButton, userList);
+        Application.Run();
+    }
+
+    static void UpdateUserList(ListView listView)
+    {
+        listView.SetSource(manager.Users.Select(u => u.Login).ToList());
+    }
+}

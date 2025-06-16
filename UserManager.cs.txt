@@ -1,0 +1,64 @@
+using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
+
+public class UserManager
+{
+    private const string FilePath = "users.json";
+    public List<User> Users { get; private set; }
+
+    public UserManager()
+    {
+        LoadUsers();
+    }
+
+    public void LoadUsers()
+    {
+        if (File.Exists(FilePath))
+        {
+            var json = File.ReadAllText(FilePath);
+            Users = JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
+        }
+        else
+        {
+            Users = new List<User>();
+        }
+    }
+
+    public void SaveUsers()
+    {
+        var json = JsonSerializer.Serialize(Users, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(FilePath, json);
+    }
+
+    public bool AddUser(string login, string password)
+    {
+        if (Users.Any(u => u.Login == login))
+            return false;
+
+        var hash = HashPassword(password);
+        Users.Add(new User { Login = login, PasswordHash = hash });
+        SaveUsers();
+        return true;
+    }
+
+    public bool RemoveUser(string login)
+    {
+        var user = Users.FirstOrDefault(u => u.Login == login);
+        if (user != null)
+        {
+            Users.Remove(user);
+            SaveUsers();
+            return true;
+        }
+        return false;
+    }
+
+    private string HashPassword(string password)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(password);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+}
