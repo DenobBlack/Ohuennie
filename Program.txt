@@ -1,0 +1,62 @@
+using Grpc.Net.Client;
+using GrpcOrder;
+using Google.Protobuf.WellKnownTypes;
+
+Console.WriteLine("gRPC Order Client");
+using var channel = GrpcChannel.ForAddress("https://localhost:5001");
+var client = new OrderService.OrderServiceClient(channel);
+
+while (true)
+{
+    Console.WriteLine("1. Добавить заказ\n2. Получить заказ\n3. Удалить\n4. Все заказы\n5. Фильтрация\n0. Выход");
+    var input = Console.ReadLine();
+    switch (input)
+    {
+        case "1":
+            var order = new Order
+            {
+                Date = Timestamp.FromDateTime(DateTime.UtcNow),
+            };
+            order.Items.Add(new Item { Name = "Товар 1", Price = 100 });
+            var result = client.CreateOrder(order);
+            Console.WriteLine($"Создан заказ с ID: {result.Id}");
+            break;
+
+        case "2":
+            Console.Write("Введите ID: ");
+            var id = Console.ReadLine();
+            var orderInfo = client.GetOrder(new OrderIdRequest { Id = id });
+            Console.WriteLine($"Дата: {orderInfo.Date.ToDateTime()}, Товаров: {orderInfo.Items.Count}");
+            break;
+
+        case "3":
+            Console.Write("Введите ID для удаления: ");
+            id = Console.ReadLine();
+            client.DeleteOrder(new OrderIdRequest { Id = id });
+            Console.WriteLine("Удалено.");
+            break;
+
+        case "4":
+            var list = client.ListOrders(new Empty());
+            foreach (var o in list.Orders)
+                Console.WriteLine($"ID: {o.Id}, Дата: {o.Date.ToDateTime()}, Товаров: {o.Items.Count}");
+            break;
+
+        case "5":
+            Console.Write("Мин. дата (YYYY-MM-DD): ");
+            var date = DateTime.Parse(Console.ReadLine());
+            Console.Write("Мин. сумма: ");
+            var sum = double.Parse(Console.ReadLine());
+            var filtered = client.FilterOrders(new FilterRequest
+            {
+                Date = Timestamp.FromDateTime(date.ToUniversalTime()),
+                MinPrice = sum
+            });
+            foreach (var o in filtered.Orders)
+                Console.WriteLine($"ID: {o.Id}, Сумма: {o.Items.Sum(i => i.Price)}");
+            break;
+
+        case "0":
+            return;
+    }
+}

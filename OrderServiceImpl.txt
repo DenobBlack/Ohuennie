@@ -1,0 +1,52 @@
+using Grpc.Core;
+using GrpcOrder;
+using Google.Protobuf.WellKnownTypes;
+using System.Collections.Concurrent;
+
+public class OrderServiceImpl : OrderService.OrderServiceBase
+{
+    private readonly ConcurrentDictionary<string, Order> _orders = new();
+
+    public override Task<OrderIdRequest> CreateOrder(Order request, ServerCallContext context)
+    {
+        request.Id = Guid.NewGuid().ToString();
+        _orders[request.Id] = request;
+        return Task.FromResult(new OrderIdRequest { Id = request.Id });
+    }
+
+    public override Task<Order> GetOrder(OrderIdRequest request, ServerCallContext context)
+    {
+        return Task.FromResult(_orders.GetValueOrDefault(request.Id, new Order()));
+    }
+
+    public override Task<OrderIdRequest> UpdateOrder(Order request, ServerCallContext context)
+    {
+        _orders[request.Id] = request;
+        return Task.FromResult(new OrderIdRequest { Id = request.Id });
+    }
+
+    public override Task<OrderIdRequest> DeleteOrder(OrderIdRequest request, ServerCallContext context)
+    {
+        _orders.TryRemove(request.Id, out _);
+        return Task.FromResult(new OrderIdRequest { Id = request.Id });
+    }
+
+    public override Task<OrderList> ListOrders(Empty request, ServerCallContext context)
+    {
+        var list = new OrderList();
+        list.Orders.AddRange(_orders.Values);
+        return Task.FromResult(list);
+    }
+
+    public override Task<OrderList> FilterOrders(FilterRequest request, ServerCallContext context)
+    {
+        var result = _orders.Values
+            .Where(o => o.Date.ToDateTime() >= request.Date.ToDateTime() &&
+                        o.Items.Sum(i => i.Price) >= request.MinPrice)
+            .ToList();
+
+        var response = new OrderList();
+        response.Orders.AddRange(result);
+        return Task.FromResult(response);
+    }
+}

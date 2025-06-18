@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GrpcOrder";
+
+package order;
+
+message Item {
+  string name = 1;
+  double price = 2;
+}
+
+message Order {
+  string id = 1;
+  google.protobuf.Timestamp date = 2;
+  repeated Item items = 3;
+}
+
+message OrderIdRequest {
+  string id = 1;
+}
+
+message OrderList {
+  repeated Order orders = 1;
+}
+
+message FilterRequest {
+  google.protobuf.Timestamp date = 1;
+  double min_price = 2;
+}
+
+service OrderService {
+  rpc CreateOrder (Order) returns (OrderIdRequest);
+  rpc GetOrder (OrderIdRequest) returns (Order);
+  rpc UpdateOrder (Order) returns (OrderIdRequest);
+  rpc DeleteOrder (OrderIdRequest) returns (OrderIdRequest);
+  rpc ListOrders (google.protobuf.Empty) returns (OrderList);
+  rpc FilterOrders (FilterRequest) returns (OrderList);
+}
